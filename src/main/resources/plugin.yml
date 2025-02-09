@@ -1,0 +1,12 @@
+name: ItemUpgrade
+version: '9.9'
+main: me.thanhmagics.ItemUpgrade
+api-version: '1.21'
+author: ThanhMagics
+commands:
+  itemupgrade:
+    usage: /<command>
+  upgrademenu:
+    usage: /<command>
+    aliases:
+      - 'um'
