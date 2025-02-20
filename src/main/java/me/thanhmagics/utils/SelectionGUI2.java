@@ -14,15 +14,13 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class SelectionGUI2 implements Listener {
 
     private static final Map<UUID,SelectionGUI2> storages = new HashMap<>();
     private static final Map<UUID,UUID> players = new HashMap<>();
+    private static final List<UUID> opens = new ArrayList<>();
     private static boolean regEvent = false;
 
     private UUID uuid = UUID.randomUUID();
@@ -31,23 +29,22 @@ public class SelectionGUI2 implements Listener {
     private int page;
     private int maxPage;
     private int size;
-    private String title = "";
+    private String title = "Inventory";
     private boolean pageTravelling = false;
 
     private final LinkedList<Item> items = new LinkedList<>();
+    private final List<SG2_Runnable> onClose = new ArrayList<>();
     private final Map<Integer,Item> specialItems = new HashMap<>();
     private final Map<Integer,ItemStack> decorItems = new HashMap<>();
     private final Map<Integer,Item> itemsIndex = new HashMap<>();
 
 
     public SelectionGUI2(Items items)  {
-        this.items.addAll(items.getItems());
+        if (items != null) this.items.addAll(items.getItems());
         if (!regEvent) {
             ItemUpgrade.getInstance().getServer().getPluginManager().registerEvents(this,ItemUpgrade.getInstance());
             regEvent = true;
         }
-        size = this.items.size() <= 28 ? ((this.items.size()-1) / 7) * 9 + 27: 54;
-        maxPage = this.items.size() <= 28 ? 1 : (this.items.size() / 26) + 1;
     }
 
     public SelectionGUI2 addPageTravelling() {
@@ -75,6 +72,11 @@ public class SelectionGUI2 implements Listener {
         return this;
     }
 
+    public SelectionGUI2 addOnCloseRunnable(SG2_Runnable... runs) {
+        onClose.addAll(Arrays.asList(runs));
+        return this;
+    }
+
     public SelectionGUI2 open(Player player,int page) {
         uuid = UUID.randomUUID();
         this.page = page;
@@ -86,6 +88,8 @@ public class SelectionGUI2 implements Listener {
                 addDecorItems(decorItem,9 + (9 * i),9 + ((9 * i) + 8));
             }
         }
+        size = this.items.size() <= 28 ? ((this.items.size()-1) / 7) * 9 + 27: 54;
+        maxPage = this.items.size() <= 28 ? 1 : (this.items.size() / 26) + 1;
         decorItems.forEach(inventory::setItem);
         if (pageTravelling) {
             addSpecialItem(size - 1, new Item(new ItemBuilder(Material.ARROW)
@@ -120,7 +124,9 @@ public class SelectionGUI2 implements Listener {
             itemsIndex.put(fe,is);
             inventory.setItem(fe, is.getItemStack());
         }
+        opens.remove(player.getUniqueId());
         player.openInventory(inventory);
+        opens.add(player.getUniqueId());
         players.put(player.getUniqueId(),uuid);
         storages.put(uuid,this);
         return this;
@@ -139,13 +145,13 @@ public class SelectionGUI2 implements Listener {
         SelectionGUI2 selectionGUI2 = storages.get(players.get(player.getUniqueId()));
         if (event.getClickedInventory() instanceof PlayerInventory) {
             event.setCancelled(true);
-            if (selectionGUI2.onClickPI != null) selectionGUI2.onClickPI.onClick(event.getCurrentItem(),event.getClick(),selectionGUI2);
+            if (selectionGUI2.onClickPI != null) selectionGUI2.onClickPI.onClick(event.getCurrentItem(),event.getClick(),selectionGUI2,event);
         } else {
             Item clicked = selectionGUI2.itemsIndex.get(event.getSlot());
             if (clicked == null) {
                 event.setCancelled(true);
                 return;
-            };
+            }
             clicked.onClick(event.getClick(),selectionGUI2);
             event.setCancelled(clicked.cancel);
         }
@@ -155,6 +161,10 @@ public class SelectionGUI2 implements Listener {
     public void onCloseInv(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         if (players.containsKey(player.getUniqueId())) {
+            if (opens.contains(player.getUniqueId())) {
+                SelectionGUI2 instance = storages.get(players.get(player.getUniqueId()));
+                instance.onClose.forEach(e -> e.run(player,instance));
+            }
             storages.remove(players.get(player.getUniqueId()));
             players.remove(player.getUniqueId());
         }
@@ -162,8 +172,12 @@ public class SelectionGUI2 implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        Player player = (Player) event.getPlayer();
+        Player player = event.getPlayer();
         if (players.containsKey(player.getUniqueId())) {
+            if (opens.contains(player.getUniqueId())) {
+                SelectionGUI2 instance = storages.get(players.get(player.getUniqueId()));
+                instance.onClose.forEach(e -> e.run(player,instance));
+            }
             storages.remove(players.get(player.getUniqueId()));
             players.remove(player.getUniqueId());
         }
@@ -205,7 +219,11 @@ public class SelectionGUI2 implements Listener {
     }
 
     public static abstract class SG2_OnClick {
-        public abstract void onClick(ItemStack clicked,ClickType type,SelectionGUI2 instance);
+        public abstract void onClick(ItemStack clicked,ClickType type,SelectionGUI2 instance,InventoryClickEvent event);
+    }
+
+    public static abstract class SG2_Runnable {
+        public abstract void run(Player player,SelectionGUI2 instance);
     }
 
     public static abstract class Item {

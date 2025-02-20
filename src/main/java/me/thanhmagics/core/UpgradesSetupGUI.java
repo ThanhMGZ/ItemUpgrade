@@ -9,6 +9,7 @@ import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.LinkedList;
@@ -48,7 +49,7 @@ public class UpgradesSetupGUI {
             }
         }).setTitle("Upgrades").addOnClickPI(new SelectionGUI2.SG2_OnClick() {
             @Override
-            public void onClick(ItemStack clicked, ClickType type, SelectionGUI2 instance) {
+            public void onClick(ItemStack clicked, ClickType type, SelectionGUI2 instance, InventoryClickEvent event) {
                 MMOItem mmoItem = MIUtils.fromStack(clicked);
                 if (mmoItem != null) {
                     UpgradeInfo upgradeInfo = MIUtils.getByMMOItem(mmoItem);

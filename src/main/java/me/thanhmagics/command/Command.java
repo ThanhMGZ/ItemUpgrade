@@ -1,14 +1,12 @@
 package me.thanhmagics.command;
 
 import me.thanhmagics.ItemUpgrade;
-import me.thanhmagics.core.Data;
-import me.thanhmagics.core.UpgradeGUI;
-import me.thanhmagics.core.UpgradeInfo;
-import me.thanhmagics.core.UpgradesSetupGUI;
+import me.thanhmagics.core.*;
 import me.thanhmagics.utils.MIUtils;
 import me.thanhmagics.utils.ObjectSerialization;
 import me.thanhmagics.utils.Utils;
 import net.Indyuce.mmoitems.api.item.mmoitem.MMOItem;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -52,6 +50,13 @@ public class Command implements CommandExecutor {
                     UpgradesSetupGUI.open(player, 1);
                 } else if (strings[0].equalsIgnoreCase("reset")) {
                     ItemUpgrade.getInstance().data = new Data();
+                    for (Player playerr : Bukkit.getOnlinePlayers()) {
+                        if (!ItemUpgrade.getInstance().data.playerDT.containsKey(player.getUniqueId())) {
+                            ItemUpgrade.getInstance().data.playerDT.put(
+                                    player.getUniqueId(),new PlayerDT(player.getUniqueId())
+                            );
+                        }
+                    }
                     player.sendMessage(Utils.applyColor("&aReset Thành Công!"));
                 } else if (strings[0].equalsIgnoreCase("getgem")) {
                     player.getInventory().addItem(ObjectSerialization.stringToIs(ItemUpgrade.getInstance().data.upGem));
